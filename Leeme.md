@@ -77,12 +77,12 @@ La aplicación web ha sido desarrollada bajo una arquitectura **100% Client-Side
 
 ### Opción A: Ejecución en Línea (GitHub Pages)
 1. Accede a la URL pública generada en el despliegue del repositorio:
-   * **URL de la Aplicación:** `https://<tu-usuario>.github.io/desafio-edo-hogar-canino/`
+   * **URL de la Aplicación:** `https://javierluna66.github.io/desafio_individual/`
 
 ### Opción B: Ejecución Local
 1. Clona este repositorio en tu equipo:
    ```bash
-   git clone https://github.com/tu-usuario/desafio-edo-hogar-canino.git
+   git clone https://github.com/javierLuna66/desafio_individual
    cd desafio-edo-hogar-canino
    ```
 2. Abre el archivo `index.html` directamente haciendo doble clic sobre él en cualquier navegador web moderno (Google Chrome, Mozilla Firefox, Microsoft Edge, Brave).
