@@ -2,7 +2,6 @@
 
 * **Estudiante:** Javier Luna Rojas
 * **Materia:** Métodos Numéricos
-* **Fecha Límite:** 6 de noviembre de 2026
 
 ---
 
