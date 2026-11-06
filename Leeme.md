@@ -83,7 +83,6 @@ La aplicación web ha sido desarrollada bajo una arquitectura **100% Client-Side
 1. Clona este repositorio en tu equipo:
    ```bash
    git clone https://github.com/javierLuna66/desafio_individual
-   cd desafio-edo-hogar-canino
    ```
 2. Abre el archivo `index.html` directamente haciendo doble clic sobre él en cualquier navegador web moderno (Google Chrome, Mozilla Firefox, Microsoft Edge, Brave).
 
