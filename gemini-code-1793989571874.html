@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador EDO | Hogar Canino El Alto - Heun vs RK4</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --exact: #10b981;
+      --heun: #f59e0b;
+      --rk4: #ec4899;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: var(--bg); color: var(--text); line-height: 1.6; padding: 1.5rem; }
+    .container { max-width: 1320px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--accent);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    header h1 { font-size: 1.5rem; color: var(--accent); margin-bottom: 0.35rem; }
+    header p { color: var(--muted); font-size: 0.95rem; }
+    .badge-eq {
+      display: inline-block;
+      background: #0284c7;
+      color: #fff;
+      font-weight: 600;
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+    .grid-main { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; }
+    @media (max-width: 980px) { .grid-main { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 { font-size: 1.1rem; color: var(--accent); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    .form-group { margin-bottom: 0.9rem; }
+    .form-group label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 0.3rem; color: #cbd5e1; }
+    .unit { color: var(--accent); font-weight: 600; font-size: 0.8rem; }
+    .form-group input {
+      width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px;
+      border: 1px solid var(--border); background: #0f172a; color: #fff; font-size: 0.95rem;
+    }
+    .form-group input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 0.5rem; display: none; font-weight: 600; }
+    .btn-group { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    button {
+      flex: 1; padding: 0.65rem; border: none; border-radius: 6px;
+      font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-secondary { background: #334155; color: var(--text); }
+    button:hover { opacity: 0.9; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .kpi { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem; }
+    .kpi-title { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
+    .kpi-val { font-size: 1.35rem; font-weight: 700; margin-top: 0.25rem; }
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    @media (max-width: 1100px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-box { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; height: 340px; }
+    .interpretation {
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid var(--exact);
+      padding: 1rem; border-radius: 6px; font-size: 0.95rem; margin-bottom: 1.5rem;
+    }
+    .table-container { overflow-x: auto; max-height: 420px; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: right; }
+    th, td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
+    th { background: #0f172a; color: var(--accent); position: sticky; top: 0; text-align: right; }
+    th:first-child, td:first-child { text-align: center; }
+    tr:hover { background: rgba(255,255,255,0.03); }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Simulador Comunitario EDO: Hogar Canino El Alto</h1>
+    <p>Modelado dinámico de deshacinamiento, rescate y adopción responsable de mascotas en refugios comunitarios mediante Ecuaciones Diferenciales de 1.° Orden, Método de Heun (RK2) y Runge-Kutta de 4.° Orden (RK4).</p>
+    <div class="badge-eq">EDO: dP/dt = I - k·P &nbsp;|&nbsp; P(0) = P₀ &nbsp;|&nbsp; Solución Exacta: P(t) = (I/k) + (P₀ - I/k)·e^(-k·t)</div>
+  </header>
+
+  <div class="grid-main">
+    <!-- Panel de Control -->
+    <aside>
+      <div class="card">
+        <h2>Parámetros de Entrada</h2>
+        <div class="form-group">
+          <label>Población Inicial (P₀) <span class="unit">[perros]</span></label>
+          <input type="number" id="P0" value="80" min="1" max="2000" step="1">
+        </div>
+        <div class="form-group">
+          <label>Tasa de Rescate / Ingreso (I) <span class="unit">[perros/sem]</span></label>
+          <input type="number" id="I" value="6" min="0" max="500" step="0.5">
+        </div>
+        <div class="form-group">
+          <label>Tasa de Adopción (k) <span class="unit">[1/sem]</span></label>
+          <input type="number" id="k" value="0.20" min="0.01" max="2" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Meta Sostenible del Refugio <span class="unit">[perros]</span></label>
+          <input type="number" id="meta" value="45" min="1" max="1000" step="1">
+        </div>
+        <div class="form-group">
+          <label>Tamaño de Paso (h) <span class="unit">[semanas]</span></label>
+          <input type="number" id="h" value="1.0" min="0.05" max="5" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>Tiempo de Simulación (T) <span class="unit">[semanas]</span></label>
+          <input type="number" id="T" value="10" min="1" max="100" step="1">
+        </div>
+        <div id="errorMsg" class="error-msg"></div>
+        <div class="btn-group">
+          <button class="btn-primary" onclick="ejecutarSimulacion()">Simular Modelo</button>
+          <button class="btn-secondary" onclick="cargarCasoPaso2()">Probar h = 2.0</button>
+        </div>
+        <div class="btn-group">
+          <button class="btn-secondary" onclick="restaurarDefecto()">Restaurar Base (h = 1.0)</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Contexto del Problema</h2>
+        <p style="font-size:0.86rem; color:var(--muted);">
+          <strong>Comunidad:</strong> Refugios vecinales del Distrito 3, El Alto.<br><br>
+          <strong>Pregunta guía:</strong> ¿En cuántas semanas se logra reducir la sobrepoblación inicial hasta la meta operativa sostenible y cuál método numérico aproxima mejor el proceso?
+        </p>
+      </div>
+    </aside>
+
+    <!-- Panel de Resultados -->
+    <main>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-title">Equilibrio Asintótico (I/k)</div>
+          <div class="kpi-val" id="kpiEq" style="color:var(--accent);">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">Tiempo Exacto a la Meta</div>
+          <div class="kpi-val" id="kpiMeta" style="color:var(--exact);">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">Error Rel. Final Heun</div>
+          <div class="kpi-val" id="kpiErrHeun" style="color:var(--heun);">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">Error Rel. Final RK4</div>
+          <div class="kpi-val" id="kpiErrRK4" style="color:var(--rk4);">-</div>
+        </div>
+      </div>
+
+      <div id="interpretacionBox" class="interpretation"></div>
+
+      <div class="charts-grid">
+        <div class="chart-box">
+          <canvas id="chartPoblacion"></canvas>
+        </div>
+        <div class="chart-box">
+          <canvas id="chartErrores"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tabla Comparativa por Iteraciones (Analítica vs. Heun vs. RK4)</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Paso (i)</th>
+                <th>t (sem)</th>
+                <th>Analítica P(t)</th>
+                <th>Heun (RK2)</th>
+                <th>Error Abs. Heun</th>
+                <th>Error Rel. Heun (%)</th>
+                <th>RK4 (Orden 4)</th>
+                <th>Error Abs. RK4</th>
+                <th>Error Rel. RK4 (%)</th>
+              </tr>
+            </thead>
+            <tbody id="tablaBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  let chartPob = null;
+  let chartErr = null;
+
+  function f(t, P, I, k) {
+    return I - k * P;
+  }
+
+  function solExacta(t, P0, I, k) {
+    const Peq = I / k;
+    return Peq + (P0 - Peq) * Math.exp(-k * t);
+  }
+
+  function validarEntradas(P0, I, k, meta, h, T) {
+    const errEl = document.getElementById('errorMsg');
+    if ([P0, I, k, meta, h, T].some(v => isNaN(v))) {
+      errEl.textContent = "Error: Todos los campos deben contener valores numéricos válidos.";
+      errEl.style.display = "block";
+      return false;
+    }
+    if (P0 <= 0 || I < 0 || k <= 0 || meta <= 0 || h <= 0 || T <= 0) {
+      errEl.textContent = "Error: k, P₀, meta, h y T deben ser mayores que cero (I >= 0).";
+      errEl.style.display = "block";
+      return false;
+    }
+    if (h > T) {
+      errEl.textContent = "Error: El tamaño de paso (h) no puede ser mayor al tiempo total (T).";
+      errEl.style.display = "block";
+      return false;
+    }
+    if (T / h > 2000) {
+      errEl.textContent = "Error: Demasiadas iteraciones (>2000). Incremente h o reduzca T.";
+      errEl.style.display = "block";
+      return false;
+    }
+    errEl.style.display = "none";
+    return true;
+  }
+
+  function ejecutarSimulacion() {
+    const P0 = parseFloat(document.getElementById('P0').value);
+    const I = parseFloat(document.getElementById('I').value);
+    const k = parseFloat(document.getElementById('k').value);
+    const meta = parseFloat(document.getElementById('meta').value);
+    const h = parseFloat(document.getElementById('h').value);
+    const T = parseFloat(document.getElementById('T').value);
+
+    if (!validarEntradas(P0, I, k, meta, h, T)) return;
+
+    const N = Math.round(T / h);
+    const tArr = [], exArr = [], heunArr = [], rk4Arr = [];
+    const errHeunArr = [], errRK4Arr = [];
+    const tbody = document.getElementById('tablaBody');
+    tbody.innerHTML = "";
+
+    let t = 0;
+    let P_heun = P0;
+    let P_rk4 = P0;
+
+    for (let i = 0; i <= N; i++) {
+      const P_ex = solExacta(t, P0, I, k);
+      const ea_heun = Math.abs(P_ex - P_heun);
+      const er_heun = P_ex !== 0 ? (ea_heun / Math.abs(P_ex)) * 100 : 0;
+      const ea_rk4 = Math.abs(P_ex - P_rk4);
+      const er_rk4 = P_ex !== 0 ? (ea_rk4 / Math.abs(P_ex)) * 100 : 0;
+
+      tArr.push(t.toFixed(2));
+      exArr.push(P_ex);
+      heunArr.push(P_heun);
+      rk4Arr.push(P_rk4);
+      errHeunArr.push(er_heun);
+      errRK4Arr.push(er_rk4);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i}</td>
+        <td>${t.toFixed(2)}</td>
+        <td style="color:#10b981;font-weight:600;">${P_ex.toFixed(6)}</td>
+        <td style="color:#f59e0b;">${P_heun.toFixed(6)}</td>
+        <td>${ea_heun.toFixed(6)}</td>
+        <td>${er_heun.toFixed(6)}%</td>
+        <td style="color:#ec4899;font-weight:600;">${P_rk4.toFixed(6)}</td>
+        <td>${ea_rk4.toFixed(6)}</td>
+        <td>${er_rk4.toFixed(6)}%</td>
+      `;
+      tbody.appendChild(tr);
+
+      if (i < N) {
+        // Paso de Heun (RK2)
+        const k1_h = f(t, P_heun, I, k);
+        const k2_h = f(t + h, P_heun + h * k1_h, I, k);
+        P_heun = P_heun + (h / 2) * (k1_h + k2_h);
+
+        // Paso de RK4
+        const k1 = f(t, P_rk4, I, k);
+        const k2 = f(t + h / 2, P_rk4 + (h / 2) * k1, I, k);
+        const k3 = f(t + h / 2, P_rk4 + (h / 2) * k2, I, k);
+        const k4 = f(t + h, P_rk4 + h * k3, I, k);
+        P_rk4 = P_rk4 + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+
+        t = (i + 1) * h;
+      }
+    }
+
+    // Actualizar KPIs e Interpretación
+    const Peq = I / k;
+    document.getElementById('kpiEq').textContent = `${Peq.toFixed(1)} perros`;
+
+    let textoMeta = "";
+    if ((P0 > meta && Peq < meta) || (P0 < meta && Peq > meta)) {
+      const tMeta = Math.log((meta - Peq) / (P0 - Peq)) / (-k);
+      document.getElementById('kpiMeta').textContent = `${tMeta.toFixed(2)} sem`;
+      textoMeta = `La comunidad alcanzará la meta sostenible de <strong>${meta} perros</strong> en exactamente <strong>${tMeta.toFixed(2)} semanas</strong>.`;
+    } else if (Math.abs(P0 - meta) < 1e-6) {
+      document.getElementById('kpiMeta').textContent = `0.00 sem`;
+      textoMeta = `El refugio ya se encuentra en la meta operativa inicial.`;
+    } else {
+      document.getElementById('kpiMeta').textContent = `No alcanzable`;
+      textoMeta = `Con los parámetros actuales, la población tiende al equilibrio de <strong>${Peq.toFixed(1)} perros</strong>, por lo que no cruza el umbral de ${meta} perros (se requiere aumentar la tasa de adopción <em>k</em> o reducir <em>I</em>).`;
+    }
+
+    const ultErrHeun = errHeunArr[errHeunArr.length - 1];
+    const ultErrRK4 = errRK4Arr[errRK4Arr.length - 1];
+    document.getElementById('kpiErrHeun').textContent = `${ultErrHeun.toFixed(4)}%`;
+    document.getElementById('kpiErrRK4').textContent = `${ultErrRK4.toFixed(6)}%`;
+
+    const P_fin_ex = exArr[exArr.length - 1];
+    document.getElementById('interpretacionBox').innerHTML = `
+      <strong>Interpretación Comunitaria y Numérica (t = ${T} semanas, paso h = ${h}):</strong><br>
+      Al cabo de ${T} semanas, la población del refugio pasa de ${P0} a <strong>${P_fin_ex.toFixed(2)} perros</strong>, convergiendo hacia un equilibrio estable de <strong>${Peq.toFixed(1)} perros</strong>. ${textoMeta}<br>
+      En precisión numérica, el método <strong>RK4</strong> supera ampliamente a Heun: en t = ${T}, el error relativo de RK4 es de apenas <strong>${ultErrRK4.toFixed(6)}%</strong> frente a <strong>${ultErrHeun.toFixed(4)}%</strong> de Heun, confirmando la ventaja de un esquema de cuarto orden O(h⁴).
+    `;
+
+    renderizarGraficas(tArr, exArr, heunArr, rk4Arr, errHeunArr, errRK4Arr, meta);
+  }
+
+  function renderizarGraficas(tArr, exArr, heunArr, rk4Arr, errHeunArr, errRK4Arr, meta) {
+    const ctx1 = document.getElementById('chartPoblacion').getContext('2d');
+    const ctx2 = document.getElementById('chartErrores').getContext('2d');
+
+    if (chartPob) chartPob.destroy();
+    if (chartErr) chartErr.destroy();
+
+    const metaLine = tArr.map(() => meta);
+
+    chartPob = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: tArr,
+        datasets: [
+          { label: 'Solución Analítica', data: exArr, borderColor: '#10b981', backgroundColor: '#10b981', borderWidth: 2.5, tension: 0.25, pointRadius: 3 },
+          { label: 'Método de Heun (RK2)', data: heunArr, borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderDash: [6, 4], borderWidth: 2, tension: 0.25, pointRadius: 4 },
+          { label: 'Método RK4 (Orden 4)', data: rk4Arr, borderColor: '#ec4899', backgroundColor: '#ec4899', borderDash: [2, 2], borderWidth: 2, tension: 0.25, pointRadius: 4 },
+          { label: 'Meta Sostenible', data: metaLine, borderColor: '#38bdf8', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: { display: true, text: 'Evolución de la Población Canina P(t) [perros vs. semanas]', color: '#f8fafc' },
+          legend: { labels: { color: '#cbd5e1', boxWidth: 14 } }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Tiempo t (semanas)', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+          y: { title: { display: true, text: 'Población P(t) [perros]', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+        }
+      }
+    });
+
+    chartErr = new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels: tArr,
+        datasets: [
+          { label: 'Error Relativo % Heun', data: errHeunArr, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', fill: true, borderWidth: 2, tension: 0.2 },
+          { label: 'Error Relativo % RK4', data: errRK4Arr, borderColor: '#ec4899', backgroundColor: 'rgba(236, 72, 153, 0.15)', fill: true, borderWidth: 2, tension: 0.2 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: { display: true, text: 'Comparación de Error Relativo Porcentual (%)', color: '#f8fafc' },
+          legend: { labels: { color: '#cbd5e1', boxWidth: 14 } }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Tiempo t (semanas)', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+          y: { title: { display: true, text: 'Error Relativo (%)', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+        }
+      }
+    });
+  }
+
+  function cargarCasoPaso2() {
+    document.getElementById('h').value = "2.0";
+    ejecutarSimulacion();
+  }
+
+  function restaurarDefecto() {
+    document.getElementById('P0').value = "80";
+    document.getElementById('I').value = "6";
+    document.getElementById('k').value = "0.20";
+    document.getElementById('meta').value = "45";
+    document.getElementById('h').value = "1.0";
+    document.getElementById('T').value = "10";
+    ejecutarSimulacion();
+  }
+
+  window.onload = ejecutarSimulacion;
+</script>
+</body>
+</html>
